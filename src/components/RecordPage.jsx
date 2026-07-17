@@ -1,4 +1,4 @@
-import { LEVELS } from '../data.js'
+import { LEVELS, levelLabel } from '../data.js'
 import { ArrowLeftIcon, TrashIcon } from './Icons.jsx'
 
 const fmtDate = (ts) => {
@@ -39,7 +39,7 @@ export const RecordPage = ({ user, history, badges, onDelete, onDeleteAll, onBac
                 return (
                   <div key={lv.id} className="flex items-center gap-2 text-sm">
                     <span className="w-7 text-center">{lv.icon}</span>
-                    <span className="text-[10px] font-black text-indigo-400 w-12 shrink-0">レベル{lv.id}</span>
+                    <span className="text-[10px] font-black text-indigo-400 w-12 shrink-0">{levelLabel(lv.id)}</span>
                     <span className="flex-1 text-[11px] font-bold text-slate-500 truncate">{lv.title}</span>
                     <span className="text-sm w-6 text-center">{badges[lv.id] ?? ''}</span>
                     <span className="text-[11px] font-bold text-slate-400 w-14 text-right">{list.length}回</span>
@@ -63,7 +63,7 @@ export const RecordPage = ({ user, history, badges, onDelete, onDeleteAll, onBac
                   <span className="text-lg w-7 text-center">{h.stamp}</span>
                   <div className="flex-1 min-w-0">
                     <div className="text-[11px] font-black text-slate-600">
-                      レベル{h.level} <span className="text-slate-400 font-bold">({h.modeType === 'flash' ? 'フラッシュ' : 'テンキー'})</span>
+                      {levelLabel(h.level)} <span className="text-slate-400 font-bold">({h.modeType === 'flash' ? 'フラッシュ' : 'テンキー'})</span>
                     </div>
                     <div className="text-[10px] text-slate-300 font-bold">{fmtDate(h.date)}</div>
                   </div>

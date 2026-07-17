@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { generateQuestions, checkAnswer, formatAnswer, soundService, QUESTION_COUNT } from '../data.js'
+import { generateQuestions, checkAnswer, formatAnswer, qPoly, soundService, QUESTION_COUNT } from '../data.js'
 import { HomeIcon } from './Icons.jsx'
 
 // ── 式の表示: x をイタリック(数学書体風)で描画 ─────────────────
@@ -92,7 +92,21 @@ export const GameScreen = ({ config, settings, onExit, onFinish }) => {
     if (settings.isSoundEnabled) soundService.playTap()
     if (k === 'OK') { submit(); return }
     if (k === 'C') { setInput(''); setHint(''); return }
-    if (k === 'BS') { setInput(prev => prev.slice(0, -1)); return }
+    if (k === 'BS') {
+      // x³ は1段ずつ戻す(x³ → x² → x)
+      setInput(prev => prev.endsWith('³') ? prev.slice(0, -1) + '²' : prev.slice(0, -1))
+      return
+    }
+    if (k === 'x') {
+      // x を続けて押すと累乗になる(x → x² → x³)
+      setInput(prev => {
+        if (prev.endsWith('x')) return prev.slice(0, -1) + 'x²'
+        if (prev.endsWith('²')) return prev.slice(0, -1) + '³'
+        if (prev.endsWith('³')) return prev
+        return prev.length >= 9 ? prev : prev + 'x'
+      })
+      return
+    }
     setInput(prev => (prev.length >= 9 ? prev : prev + k))
   }
 
@@ -105,7 +119,7 @@ export const GameScreen = ({ config, settings, onExit, onFinish }) => {
 
   if (!q) return null
 
-  const answerText = formatAnswer(q.a, q.b)
+  const answerText = formatAnswer(qPoly(q))
 
   return (
     <div className="flex flex-col h-full w-full bg-indigo-50 overflow-hidden">

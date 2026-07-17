@@ -1,4 +1,4 @@
-import { LEVELS } from '../data.js'
+import { LEVELS, levelLabel } from '../data.js'
 import { ExprText } from './GameScreen.jsx'
 import { ArrowLeftIcon, Volume2Icon, VolumeXIcon } from './Icons.jsx'
 
@@ -52,7 +52,7 @@ export const LevelSelect = ({ user, settings, onUpdateSettings, badges, counts, 
                 <div className="text-3xl shrink-0 w-10 text-center">{lv.icon}</div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-2">
-                    <span className="text-[10px] font-black text-indigo-400 shrink-0">レベル{lv.id}</span>
+                    <span className="text-[10px] font-black text-indigo-400 shrink-0">{levelLabel(lv.id)}</span>
                     <span className="font-black text-slate-700 text-sm truncate">{lv.title}</span>
                   </div>
                   <div className="text-[11px] text-slate-400 font-bold truncate">{lv.desc}</div>
