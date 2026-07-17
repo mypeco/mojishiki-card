@@ -29,6 +29,10 @@ export async function addHistoryRecord(userId, record) {
   return db.history.add({ userId, ...record })
 }
 
+export async function updateHistoryRecord(id, fields) {
+  return db.history.update(id, fields)
+}
+
 export async function deleteHistoryRecord(id) {
   return db.history.delete(id)
 }

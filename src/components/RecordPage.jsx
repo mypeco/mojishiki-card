@@ -7,12 +7,15 @@ const fmtDate = (ts) => {
 }
 
 export const RecordPage = ({ user, history, badges, onDelete, onDeleteAll, onBack }) => {
+  // 解き直しの記録(旧データ)は集計・一覧に含めない
+  const visible = history.filter(h => !h.isRetry)
+
   const byLevel = {}
-  for (const h of history) {
+  for (const h of visible) {
     (byLevel[h.level] ??= []).push(h)
   }
 
-  const recent = [...history].sort((a, b) => b.date - a.date).slice(0, 50)
+  const recent = [...visible].sort((a, b) => b.date - a.date).slice(0, 50)
 
   return (
     <div className="flex flex-col h-full bg-indigo-50 animate-fade-in overflow-hidden">
@@ -69,7 +72,9 @@ export const RecordPage = ({ user, history, badges, onDelete, onDeleteAll, onBac
                   </div>
                   <span className="text-[11px] font-black text-slate-500">{h.timeStr}秒</span>
                   {h.modeType === 'tenkey' && (
-                    <span className={`text-[11px] font-black w-10 text-right ${h.accuracy === 100 ? 'text-emerald-500' : 'text-rose-400'}`}>{h.accuracy}%</span>
+                    <span className={`text-[11px] font-black text-right whitespace-nowrap ${h.accuracy === 100 || h.retried ? 'text-emerald-500' : 'text-rose-400'}`}>
+                      {h.retried ? `${h.accuracy}→100` : h.accuracy}%
+                    </span>
                   )}
                   <button onClick={() => onDelete(h.id)} className="text-slate-200 hover:text-rose-400 p-1">
                     <TrashIcon className="w-4 h-4" />
