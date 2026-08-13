@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { generateQuestions, checkAnswer, fmtNum, soundService, QUESTION_COUNT } from '../data.js'
 import { HomeIcon } from './Icons.jsx'
+import { HintPanel } from './HintPanel.jsx'
 
 // ── テンキー(数字 + 小数点)──────────────────────────────────
 // 0 と OK は横2マス分
@@ -38,6 +39,7 @@ export const GameScreen = ({ config, settings, onExit, onFinish }) => {
   const [feedback, setFeedback] = useState('none')
   const [hint, setHint] = useState('')
   const [showFlashAns, setShowFlashAns] = useState(false)
+  const [showHint, setShowHint] = useState(false)
   const [wrongList, setWrongList] = useState([])
   const [mistakeCount, setMistakeCount] = useState(0)
   const [startTime, setStartTime] = useState(null)
@@ -52,7 +54,7 @@ export const GameScreen = ({ config, settings, onExit, onFinish }) => {
   const isTenkey = config.modeType === 'tenkey'
 
   const nextQ = (ci, cw, cm, cqs) => {
-    setFeedback('none'); setInput(''); setHint(''); setShowFlashAns(false)
+    setFeedback('none'); setInput(''); setHint(''); setShowFlashAns(false); setShowHint(false)
     if (ci < cqs.length - 1) setIdx(ci + 1)
     else onFinish({ timeMs: Date.now() - startTime, mistakeCount: cm, wrongList: cw, total: cqs.length })
   }
@@ -90,6 +92,11 @@ export const GameScreen = ({ config, settings, onExit, onFinish }) => {
     setInput(prev => (prev.length >= 7 ? prev : prev + k))
   }
 
+  const openHint = () => {
+    if (settings.isSoundEnabled) soundService.playTap()
+    setShowHint(true)
+  }
+
   const handleFlashTap = () => {
     if (showFlashAns) return
     if (settings.isSoundEnabled) soundService.playTap()
@@ -102,7 +109,7 @@ export const GameScreen = ({ config, settings, onExit, onFinish }) => {
   const answerText = fmtNum(q.ans)
 
   return (
-    <div className="flex flex-col h-full w-full bg-teal-50 overflow-hidden">
+    <div className="flex flex-col h-full w-full bg-teal-50 overflow-hidden relative">
       {/* プログレスバー */}
       <div className="h-1.5 bg-teal-200 shrink-0">
         <div className="h-full bg-teal-500 transition-all duration-300" style={{ width: `${(idx / qs.length) * 100}%` }} />
@@ -151,15 +158,23 @@ export const GameScreen = ({ config, settings, onExit, onFinish }) => {
         </div>
 
         {isTenkey ? (
-          <div className="shrink-0 px-2 pb-1 w-full max-w-sm">
-            <TenKeyPad onKey={handleKey} disabled={feedback === 'correct'} />
-          </div>
+          <>
+            <button onClick={openHint}
+              className="shrink-0 px-5 py-2 bg-amber-100 text-amber-600 rounded-full font-black text-sm border-b-4 border-amber-300 active:border-b-0 active:translate-y-1 transition-all shadow-sm">
+              💡 ヒント
+            </button>
+            <div className="shrink-0 px-2 pb-1 w-full max-w-sm">
+              <TenKeyPad onKey={handleKey} disabled={feedback === 'correct'} />
+            </div>
+          </>
         ) : (
           <div className="text-center text-slate-400 font-bold animate-pulse text-base">
             タップして答え合わせ
           </div>
         )}
       </div>
+
+      {showHint && <HintPanel item={q} onClose={() => setShowHint(false)} />}
     </div>
   )
 }

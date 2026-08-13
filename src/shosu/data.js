@@ -286,6 +286,43 @@ export const checkAnswer = (item, input) => {
   return { correct, pointMiss }
 }
 
+// ── ヒント(筆算の図解)────────────────────────────────────────
+// 問題文から筆算の組み立て方を求める。答えの数字は出さず「やり方」だけを示す。
+const dp = (s) => (s.includes('.') ? s.split('.')[1].length : 0)
+
+// 小数点をとった数字のならび(0.05 → "5")
+const stripDot = (s) => s.replace('.', '').replace(/^0+/, '') || '0'
+
+export const hintFor = (item) => {
+  const m = item.text.match(/^([\d.]+) ([+−×÷]) ([\d.]+)$/)
+  if (!m) return null
+  const [, a, op, b] = m
+
+  // たし算・ひき算 → 位をそろえる筆算
+  if (op === '+' || op === '−') return { kind: 'column', a, b, op }
+
+  // ×10 / ×100 / ÷10 / ÷100 → 小数点を動かす
+  if ((b === '10' || b === '100') && (op === '×' || op === '÷')) {
+    return { kind: 'shift', a, b, op, dir: op === '×' ? 'right' : 'left', n: b.length - 1 }
+  }
+
+  // かけ算 → 右にそろえて計算し、小数点以下のけた数だけ小数点を動かす
+  if (op === '×') {
+    return { kind: 'mul', a, b, da: dp(a), db: dp(b), ia: stripDot(a), ib: stripDot(b) }
+  }
+
+  // わる数が整数のわり算 → 商の小数点はわられる数の小数点の真上
+  if (dp(b) === 0) return { kind: 'div', a, b }
+
+  // わる数が小数のわり算 → 両方を10倍・100倍して、わる数を整数にする
+  const k = Math.pow(10, dp(b))
+  return {
+    kind: 'divDecimal', a, b, k,
+    a2: fmtNum(parseFloat(a) * k),
+    b2: fmtNum(parseFloat(b) * k),
+  }
+}
+
 // ── サウンド ──────────────────────────────────────────────────
 export class SoundService {
   constructor() { this.ctx = null }
