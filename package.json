@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "check": "node tools/check-questions.mjs && node tools/check-style.mjs && node tools/check-kit.mjs",
+    "build:fonts": "node tools/build-fonts.mjs"
   },
   "dependencies": {
     "dexie": "^4.4.4",
@@ -15,6 +17,9 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "3.4.17",
     "vite": "^6.0.0"
   }
 }

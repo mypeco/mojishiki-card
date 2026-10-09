@@ -1,0 +1,10 @@
+{
+  "kit_version": "1.21.5",
+  "synced": "2026-10-09",
+  "files": {
+    "kit/tailwind.config.snippet.cjs": {
+      "from": "tokens/tailwind.config.snippet.js",
+      "md5": "8ab9dc2efe94b4802b24d5af14514501"
+    }
+  }
+}
