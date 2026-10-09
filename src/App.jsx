@@ -1,59 +1,74 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
-  db, getUserSettings, saveUserSettings,
-  getHistory, addHistoryRecord, updateHistoryRecord, deleteHistoryRecord, clearHistoryByUser,
-  getBadges, saveBadge, clearBadgesByUser,
-} from './db.js'
-import { QUESTION_COUNT } from './data.js'
-import { ProfileSelect } from './components/ProfileSelect.jsx'
-import { LevelSelect } from './components/LevelSelect.jsx'
+  getUsers, createUser, deleteUser, getUserData, saveUserData,
+  getDevice, setDevice, badgeKey, migrateFromIndexedDB,
+} from './store.js'
+import { getUnit, getLevel } from './units/index.js'
+import { ProfileScreen } from './components/ProfileScreen.jsx'
+import { HomeScreen } from './components/HomeScreen.jsx'
+import { UnitScreen } from './components/UnitScreen.jsx'
 import { GameScreen } from './components/GameScreen.jsx'
 import { ResultScreen } from './components/ResultScreen.jsx'
-import { RecordPage } from './components/RecordPage.jsx'
+import { RecordScreen } from './components/RecordScreen.jsx'
+import { SettingsSheet } from './components/SettingsSheet.jsx'
 
+// 画面: PROFILE(あなたの おなまえは？)→ HOME(単元)→ UNIT(レベル)→ GAME → RESULT
+//       HOME から RECORD(きろく)・せってい
 export default function App() {
+  const [ready, setReady] = useState(false)
   const [screen, setScreen] = useState('PROFILE')
+  const [users, setUsers] = useState([])
   const [user, setUser] = useState(null)
-  const [settings, setSettings] = useState({ isSoundEnabled: true, modeType: 'tenkey' })
-  const [history, setHistory] = useState([])
-  const [badges, setBadges] = useState({})
-  const [config, setConfig] = useState(null)
-  const [lastResult, setLastResult] = useState(null)
+  const [data, setData] = useState(null)
+  const [device, setDeviceState] = useState(getDevice)
+  const [unitId, setUnitId] = useState(null)
+  const [config, setConfig] = useState(null) // { unit, level, modeType, retryList, sourceId, key }
+  const [result, setResult] = useState(null)
+  const [showSettings, setShowSettings] = useState(false)
 
-  const handleSelectUser = async (selectedUser) => {
-    const [s, hist, bdgs] = await Promise.all([
-      getUserSettings(selectedUser.id),
-      getHistory(selectedUser.id),
-      getBadges(selectedUser.id),
-    ])
-    const badgeMap = {}
-    bdgs.forEach(b => { badgeMap[b.level] = b.stamp })
-    setUser(selectedUser)
-    setSettings(s)
-    setHistory(hist)
-    setBadges(badgeMap)
-    setScreen('LEVELS')
+  useEffect(() => {
+    migrateFromIndexedDB().finally(() => { setUsers([...getUsers()]); setReady(true) })
+  }, [])
+
+  // うごきの 設定を html に 反映する(index.css の .no-motion)
+  useEffect(() => {
+    document.documentElement.classList.toggle('no-motion', !device.motion)
+  }, [device.motion])
+
+  const updateDevice = (patch) => {
+    setDevice(patch)
+    setDeviceState(getDevice())
   }
 
-  const handleUpdateSettings = async (newSettings) => {
-    setSettings(newSettings)
-    if (user) await saveUserSettings(user.id, newSettings)
+  const updateData = (fn) => {
+    setData(prev => {
+      const next = fn(prev)
+      saveUserData(user.id, next)
+      return next
+    })
   }
 
-  const startLevel = (level, retryList = null, sourceId = null) => {
-    setConfig({ level, modeType: settings.modeType ?? 'tenkey', count: QUESTION_COUNT, retryList, sourceId })
+  const selectUser = (u) => {
+    setUser(u)
+    setData(getUserData(u.id))
+    setScreen('HOME')
+  }
+
+  const startLevel = (unit, level, retryList = null, sourceId = null) => {
+    setConfig({ unit, level, modeType: data.modeType, retryList, sourceId, key: Date.now() })
+    if (!retryList) updateData(d => ({ ...d, last: { unit, level } }))
     setScreen('GAME')
   }
 
-  const handleFinish = async (res) => {
-    const accuracy = Math.max(0, Math.round(((res.total - res.mistakeCount) / res.total) * 100))
-    // 解き直しは記録を追加せず、元の記録に「→100」の印を付けるだけ
+  const handleFinish = (res) => {
+    const accuracy = Math.round((res.firstTry / res.total) * 100)
+    const base = { ...res, modeType: config.modeType, accuracy, isRetry: !!config.retryList }
+    // 解き直しは きろくを ふやさず、もとの きろくに「→100」の しるしを つける
     if (config.retryList) {
       if (config.sourceId != null) {
-        await updateHistoryRecord(config.sourceId, { retried: true })
-        setHistory(prev => prev.map(h => h.id === config.sourceId ? { ...h, retried: true } : h))
+        updateData(d => ({ ...d, history: d.history.map(h => (h.id === config.sourceId ? { ...h, retried: true } : h)) }))
       }
-      setLastResult({ ...res, accuracy })
+      setResult({ ...base, stamp: null, prev: null })
       setScreen('RESULT')
       return
     }
@@ -61,109 +76,91 @@ export default function App() {
     if (config.modeType === 'flash') stamp = '⚡'
     else if (accuracy === 100) stamp = '💮'
     else if (accuracy >= 80) stamp = '🎉'
+    const prev = [...data.history].reverse().find(h => h.unit === config.unit && h.level === config.level && h.modeType === config.modeType) ?? null
     const rec = {
-      id: Date.now(), date: Date.now(),
-      level: config.level, modeType: config.modeType,
-      timeStr: (res.timeMs / 1000).toFixed(1),
-      accuracy, stamp,
-      wrongList: res.wrongList,
+      id: `r_${Date.now().toString(36)}`, date: Date.now(),
+      unit: config.unit, level: config.level, modeType: config.modeType,
+      timeStr: (res.timeMs / 1000).toFixed(1), accuracy, stamp,
+      firstTry: res.firstTry, total: res.total,
     }
-    await addHistoryRecord(user.id, rec)
-    setHistory(prev => [...prev, rec])
-    // 通常出題のテンキーで100%ならバッジ獲得
-    if (config.modeType === 'tenkey' && accuracy === 100 && !badges[config.level]) {
-      await saveBadge(user.id, config.level, '💮')
-      setBadges(prev => ({ ...prev, [config.level]: '💮' }))
-    }
-    setLastResult({ ...res, ...rec })
+    const key = badgeKey(config.unit, config.level)
+    updateData(d => ({
+      ...d,
+      history: [...d.history, rec],
+      // テンキーで ぜんぶ 1かいめで せいかい なら 💮
+      badges: config.modeType === 'tenkey' && accuracy === 100 ? { ...d.badges, [key]: '💮' } : d.badges,
+    }))
+    setResult({ ...base, stamp, prev, recId: rec.id })
     setScreen('RESULT')
   }
 
-  const handleDeleteRecord = async (id) => {
-    if (!confirm('この記録を削除しますか？')) return
-    await deleteHistoryRecord(id)
-    setHistory(prev => prev.filter(h => h.id !== id))
+  const deleteRecord = (id) => {
+    if (!confirm('この きろくを けしますか？')) return
+    updateData(d => ({ ...d, history: d.history.filter(h => h.id !== id) }))
   }
 
-  const handleDeleteAll = async () => {
-    if (!confirm('全部の記録を削除しますか？')) return
-    await clearHistoryByUser(user.id)
-    await clearBadgesByUser(user.id)
-    setHistory([])
-    setBadges({})
+  const deleteAllRecords = () => {
+    if (!confirm(`${user.name} さんの きろくを ぜんぶ けしますか？\nもとに もどせません。`)) return
+    updateData(d => ({ ...d, history: [], badges: {} }))
   }
 
-  const counts = {}
-  for (const h of history) {
-    if (!h.isRetry) counts[h.level] = (counts[h.level] ?? 0) + 1
+  if (!ready) return <div className="h-[100dvh] bg-cream" />
+
+  const unit = unitId && getUnit(unitId)
+  const gameUnit = config && getUnit(config.unit)
+  const gameLevel = config && getLevel(gameUnit, config.level)
+
+  let body = null
+  if (screen === 'PROFILE' || !user) {
+    body = (
+      <ProfileScreen users={users}
+        onSelect={selectUser}
+        onCreate={(fields) => { const u = createUser(fields); setUsers([...getUsers()]); selectUser(u) }}
+        onDelete={(id) => { deleteUser(id); setUsers([...getUsers()]) }} />
+    )
+  } else if (screen === 'HOME') {
+    body = (
+      <HomeScreen user={user} data={data}
+        onOpenUnit={(id) => { setUnitId(id); setScreen('UNIT') }}
+        onStart={(u, l) => { setUnitId(u); startLevel(u, l) }}
+        onOpenRecord={() => setScreen('RECORD')}
+        onOpenSettings={() => setShowSettings(true)}
+        onSwitchUser={() => { setUsers([...getUsers()]); setScreen('PROFILE') }} />
+    )
+  } else if (screen === 'UNIT' && unit) {
+    body = (
+      <UnitScreen unit={unit} data={data}
+        onBack={() => setScreen('HOME')}
+        onStart={startLevel}
+        onChangeMode={(m) => updateData(d => ({ ...d, modeType: m }))} />
+    )
+  } else if (screen === 'GAME' && config) {
+    body = (
+      <GameScreen key={config.key} unit={gameUnit} level={gameLevel} config={config} device={device}
+        onExit={() => setScreen('UNIT')}
+        onFinish={handleFinish} />
+    )
+  } else if (screen === 'RESULT' && result) {
+    const sourceId = config.retryList ? config.sourceId : result.recId
+    body = (
+      <ResultScreen unit={gameUnit} level={gameLevel} result={result} prev={result.prev} device={device}
+        onRetry={() => startLevel(config.unit, config.level)}
+        onRetryWrong={() => startLevel(config.unit, config.level, result.wrongList, sourceId)}
+        onBack={() => setScreen('UNIT')} />
+    )
+  } else if (screen === 'RECORD') {
+    body = (
+      <RecordScreen user={user} data={data}
+        onBack={() => setScreen('HOME')}
+        onDelete={deleteRecord}
+        onDeleteAll={deleteAllRecords} />
+    )
   }
 
-  const wrapper = (children) => (
-    <div style={{ width: '100vw', height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'white', position: 'relative' }}>
-      {children}
+  return (
+    <div className="h-[100dvh] flex flex-col bg-cream text-ink">
+      {body}
+      {showSettings && <SettingsSheet device={device} onChange={updateDevice} onClose={() => setShowSettings(false)} />}
     </div>
   )
-
-  if (screen === 'PROFILE') return wrapper(
-    <ProfileSelect db={db} onSelect={handleSelectUser} />
-  )
-
-  if (screen === 'LEVELS') return wrapper(
-    <LevelSelect
-      user={user}
-      settings={settings}
-      onUpdateSettings={handleUpdateSettings}
-      badges={badges}
-      counts={counts}
-      onStart={startLevel}
-      onOpenRecord={() => setScreen('RECORD')}
-      onBack={() => setScreen('PROFILE')}
-    />
-  )
-
-  if (screen === 'RECORD') return wrapper(
-    <RecordPage
-      user={user}
-      history={history}
-      badges={badges}
-      onDelete={handleDeleteRecord}
-      onDeleteAll={handleDeleteAll}
-      onBack={() => setScreen('LEVELS')}
-    />
-  )
-
-  if (screen === 'GAME') return wrapper(
-    <GameScreen
-      key={Date.now()}
-      config={config}
-      settings={settings}
-      onExit={() => setScreen('LEVELS')}
-      onFinish={handleFinish}
-    />
-  )
-
-  if (screen === 'RESULT' && lastResult) return wrapper(
-    <ResultScreen
-      result={lastResult}
-      modeType={config.modeType}
-      settings={settings}
-      onRetry={() => startLevel(config.level)}
-      onHome={() => setScreen('LEVELS')}
-      onRetryChallenge={
-        lastResult.wrongList?.length > 0
-          ? () => {
-              const uniq = []
-              const seen = new Set()
-              for (const w of lastResult.wrongList) {
-                if (!seen.has(w.text)) { seen.add(w.text); uniq.push(w) }
-              }
-              // 解き直しの解き直しでも、印を付ける先は元の記録のまま
-              startLevel(config.level, uniq, config.retryList ? config.sourceId : lastResult.id)
-            }
-          : null
-      }
-    />
-  )
-
-  return null
 }

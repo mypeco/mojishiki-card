@@ -1,19 +1,11 @@
-import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+// base は './'（gakushu-ui-kit の 共通方針。GitHub Pages でも Vercel でも 動く）。
+// 旧 小数カード の URL（/shosu/）は public/shosu/index.html が トップへ 案内する。
 export default defineConfig({
   plugins: [react()],
-  base: '/mojishiki-card/',
-  build: {
-    rollupOptions: {
-      input: {
-        // 文字式カード(/)と小数カード(/shosu/)の2アプリを同時にビルドする
-        main:  fileURLToPath(new URL('./index.html', import.meta.url)),
-        shosu: fileURLToPath(new URL('./shosu/index.html', import.meta.url)),
-      },
-    },
-  },
+  base: './',
   server: {
     port: process.env.PORT ? parseInt(process.env.PORT) : 5173,
   },
