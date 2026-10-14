@@ -39,6 +39,24 @@
   border: 2px dashed currentColor; border-radius: 0.12em; opacity: 0.45;
 }
 
+/* ── メモ(components/MemoPad.jsx)────────────────────────────
+   書いて いる とちゅうに 選択・長押しメニュー・拡大・スクロールを 出さない
+   (templates/CLAUDE.md §4「手書き・ドラッグ操作の 共通ルール」)。 */
+.memo-canvas {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+/* ます目(ひっ算の 位を そろえやすく する)。canvas の 下に しく ので、けしゴムで 消えない */
+.memo-grid {
+  background-image:
+    linear-gradient(theme('colors.ink / 7%') 1px, transparent 1px),
+    linear-gradient(90deg, theme('colors.ink / 7%') 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-position: -1px -1px;
+}
+
 /* ── うごきを 止める(patterns/semantics.md §4.6)──────────────
    設定の「うごき」を オフに すると html に no-motion が つく。
    はじめの 値は 端末の prefers-reduced-motion(store.js の getDevice)。

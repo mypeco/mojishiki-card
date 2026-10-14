@@ -29,3 +29,6 @@ export const FracKeyIcon = ({ className = 'w-7 h-7' }) => (
     <rect x="7" y="15" width="10" height="7" rx="1.5" />
   </svg>
 )
+export const PencilIcon = (p) => <I {...p}><path d="M21.17 6.81a1 1 0 0 0-3.99-3.99L3.84 16.17a2 2 0 0 0-.5.83l-1.32 4.35a.5.5 0 0 0 .62.62l4.35-1.32a2 2 0 0 0 .83-.5z" /><path d="m15 5 4 4" /></I>
+export const EraserIcon = (p) => <I {...p}><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21" /><path d="M22 21H7" /><path d="m5 11 9 9" /></I>
+export const UndoIcon = (p) => <I {...p}><path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11" /></I>
