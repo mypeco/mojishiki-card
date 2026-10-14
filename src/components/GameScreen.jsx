@@ -8,8 +8,10 @@ import { applyKey, checkAnswer, formatAnswer, inputText } from '../lib/answer.js
 import { sound } from '../lib/sound.js'
 import { MathText, visualLength } from './MathText.jsx'
 import { Header, PillButton, PrimaryButton, WIDTH } from './ui.jsx'
-import { DeleteIcon, LightbulbIcon, CheckIcon, FracKeyIcon } from './Icons.jsx'
+import { DeleteIcon, LightbulbIcon, CheckIcon, FracKeyIcon, PencilIcon } from './Icons.jsx'
 import { HintSheet } from './HintSheet.jsx'
+import { MemoPad } from './MemoPad.jsx'
+import { deviceStore, setDevice } from '../store.js'
 
 const CIRCLED = ['①', '②', '③', '④', '⑤', '⑥']
 
@@ -84,6 +86,8 @@ export const GameScreen = ({ unit, level, config, device, onExit, onFinish }) =>
   const [nudge, setNudge] = useState(0) // ゆらす たびに ふやす(うごきを 1回だけ 走らせる)
   const [revealed, setRevealed] = useState(false)
   const [showHint, setShowHint] = useState(false)
+  // メモを 開いて いるか。この 端末で さいごに えらんだ ほうを 覚えて おく
+  const [showMemo, setShowMemo] = useState(() => deviceStore.d.memo === true)
   const missed = useRef(new Map()) // 1回目で せいかい できなかった 問題
   const startTime = useRef(Date.now())
 
@@ -153,6 +157,12 @@ export const GameScreen = ({ unit, level, config, device, onExit, onFinish }) =>
     return () => window.removeEventListener('keydown', onKey)
   }, [showHint, level.keys])
 
+  const toggleMemo = () => {
+    play('tap')
+    setShowMemo(!showMemo)
+    setDevice({ memo: !showMemo })
+  }
+
   const reveal = () => {
     if (revealed) return
     play('tap')
@@ -175,7 +185,10 @@ export const GameScreen = ({ unit, level, config, device, onExit, onFinish }) =>
   return (
     <div className="flex flex-col h-full">
       <Header onBack={onExit} backLabel="やめる"
-        right={canHint && isTenkey ? <PillButton tone="hint" icon={<LightbulbIcon className="w-5 h-5" />} label="ヒント" onClick={() => { play('tap'); setShowHint(true) }} /> : null}>
+        right={<>
+          {canHint && isTenkey && <PillButton tone="hint" icon={<LightbulbIcon className="w-5 h-5" />} label="ヒント" onClick={() => { play('tap'); setShowHint(true) }} />}
+          <PillButton icon={<PencilIcon className="w-5 h-5" />} label="メモ" pressed={showMemo} onClick={toggleMemo} />
+        </>}>
         <div className="text-xs font-bold text-ink/70 truncate">{CIRCLED[unit.no - 1]} {unit.title}・{levelLabel(unit, level.id)}{config.retryList ? '(解き直し)' : ''}</div>
         <div className="text-base font-bold text-ink truncate"><MathText text={level.title} /></div>
       </Header>
@@ -253,6 +266,8 @@ export const GameScreen = ({ unit, level, config, device, onExit, onFinish }) =>
           </div>
         </div>
       </main>
+
+      {showMemo && <MemoPad resetKey={idx} onClose={toggleMemo} />}
 
       {showHint && <HintSheet unit={unit} level={level} item={q} onClose={() => setShowHint(false)} />}
     </div>

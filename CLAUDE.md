@@ -430,7 +430,7 @@ Playwright で 外への 通信を ふさいで 測る（上の「見た目を �
 
 ## 保存
 
-* `localStorage` の `keisan_card_users` / `keisan_card_data`（人ごと）/ `keisan_card_settings`（端末: 効果音・うごき）。
+* `localStorage` の `keisan_card_users` / `keisan_card_data`（人ごと）/ `keisan_card_settings`（端末: 効果音・うごき・メモを 開くか）。
   答え方（テンキー/フラッシュ）は 人ごと。
 * 前の アプリの IndexedDB（`MojiShikiCardDB` / `ShosuCardDB`）は **1回だけ 読んで 写す。消さない。**
   同じ なまえの 人は 1人に まとめる。写し おわると `keisan_card_migrated` が 立つ。
@@ -451,6 +451,10 @@ Playwright で 外への 通信を ふさいで 測る（上の「見た目を �
 * **x** は `.math-x`（明朝の 斜体）。かけ算の × と 形で 見わける ため。
 * **うごき** … `animate-pop-in`（画面が 出る）・`animate-nudge`（まちがい・もうひといきで 1回 ゆれる）・
   `animate-rise-in`（シート）。どれも 1回きり。`.no-motion`（設定の「うごき」）で ぜんぶ 止まる。
+* **メモ**（`src/components/MemoPad.jsx`）… 問題画面の 下に 開け閉め する 手書き欄。答えの 判定には 使わない。
+  紙と えんぴつの 代わり なので **まとめ（mix）にも 置く**（答えを 教える 足場では ない）。
+  つぎの 問題で 白紙に もどす。ペンで 書いて いる あいだは 指（手のひら）を 無視する。
+  読み上げ名は テンキーの C（「ぜんぶ けす」）と 分けて「メモを ぜんぶ けす」に して いる。
 * **足場** … ヒントは 押した ときだけ 出す。**まとめ（mix）には ヒントボタンを 置かない**
   （足場ゼロで できるかを 確かめる 回）。
 * **返しの 文言** … 観察を 言う（「10もん中 8もん、1かいめで せいかい」）。

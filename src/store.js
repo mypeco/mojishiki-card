@@ -17,7 +17,7 @@ function makeStore(key, fallback) {
   }
 }
 
-export const deviceStore = makeStore(`${APP_ID}_settings`, () => ({})) // 端末の 設定(効果音・うごき)
+export const deviceStore = makeStore(`${APP_ID}_settings`, () => ({})) // 端末の 設定(効果音・うごき・メモを 開くか)
 export const usersStore = makeStore(`${APP_ID}_users`, () => [])        // [{ id, name, icon, color }]
 export const dataStore = makeStore(`${APP_ID}_data`, () => ({}))        // { [userId]: 人ごとの データ }
 deviceStore.load(); usersStore.load(); dataStore.load()

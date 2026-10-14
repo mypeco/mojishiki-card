@@ -23,14 +23,16 @@ export const Header = ({ onBack, backLabel = 'もどる', children, right }) => 
 )
 
 // ことばつきの 小さい ボタン(ヘッダー用)。せまい 画面では アイコン だけ
-export const PillButton = ({ icon, label, onClick, tone = 'neutral' }) => {
+// pressed を わたすと 開け閉めの ボタンに なる(開いて いる あいだは 塗りつぶし)
+export const PillButton = ({ icon, label, onClick, tone = 'neutral', pressed }) => {
   const tones = {
     neutral: 'bg-card border-ink/15 border-b-ink/25 text-ink/80',
     hint: 'bg-highlight-50 border-highlight-300 border-b-highlight-500 text-highlight-800',
+    on: 'bg-cta-600 border-cta-700 border-b-cta-800 text-white',
   }
   return (
-    <button type="button" onClick={onClick} aria-label={label} title={label}
-      className={`min-h-[48px] min-w-[48px] px-3 rounded-full border-2 border-b-4 font-bold text-sm flex items-center justify-center gap-1.5 active:border-b-2 active:translate-y-0.5 transition-all ${tones[tone]}`}>
+    <button type="button" onClick={onClick} aria-label={label} title={label} aria-pressed={pressed}
+      className={`min-h-[48px] min-w-[48px] px-3 rounded-full border-2 border-b-4 font-bold text-sm flex items-center justify-center gap-1.5 active:border-b-2 active:translate-y-0.5 transition-all ${tones[pressed ? 'on' : tone]}`}>
       {icon}
       <span className="hidden sm:inline">{label}</span>
     </button>
