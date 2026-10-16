@@ -13,6 +13,7 @@ import { HintSheet } from './HintSheet.jsx'
 import { MemoPad } from './MemoPad.jsx'
 import { deviceStore, setDevice } from '../store.js'
 import { layoutHissan } from '../lib/hissan.js'
+import { gradeRange } from '../lib/grade.js'
 
 const CIRCLED = ['①', '②', '③', '④', '⑤', '⑥']
 
@@ -107,8 +108,8 @@ export const GameScreen = ({ unit, level, config, device, onExit, onFinish }) =>
   const kind = q.ans.kind
   const isTenkey = config.modeType === 'tenkey'
   const canHint = !level.mix && (level.tip || unit.hintKind === 'decimal')
-  // ひっ算の 形は ヒントと 同じ 足場。まとめ(mix)では 出さない
-  const hissan = useMemo(() => (level.mix ? null : layoutHissan(q.text)), [level.mix, q.text])
+  // ひっ算の 形は ヒントと 同じ 足場。まとめ(mix)では 出さない。小学校の レベル(ならう 学年が 小6 まで)だけ
+  const hissan = useMemo(() => (level.mix || gradeRange(level.grade)[1] > 6 ? null : layoutHissan(q.text)), [level, q.text])
   const wide = showMemo && memoWide
   const play = (name) => { if (device.sound) sound[name]() }
 

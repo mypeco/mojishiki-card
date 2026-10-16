@@ -12,7 +12,10 @@ const RE = new RegExp(`^${NUM}\\s*([+−×÷])\\s*${NUM}$`)
 
 export const parseHissan = (text) => {
   const m = RE.exec(text.trim())
-  return m ? { a: m[1], op: m[2], b: m[3] } : null
+  if (!m) return null
+  // 答えが マイナスに なる ひき算(中1 の 正負の数)は ひっ算に しない
+  if (m[2] === '−' && Number(m[1]) < Number(m[3])) return null
+  return { a: m[1], op: m[2], b: m[3] }
 }
 
 const split = (s) => {
