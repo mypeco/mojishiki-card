@@ -43,7 +43,8 @@ const keyTone = (k) => {
   return 'bg-cta-50 border-cta-300 border-b-cta-500 text-cta-800 text-3xl'
 }
 
-const TenKey = ({ keys, onKey, disabled }) => {
+// compact: メモを 開いて いる とき。キーを 低く して、メモに 高さを まわす(48px は 切らない)
+const TenKey = ({ keys, onKey, disabled, compact }) => {
   const form = FORM_KEYS.find(k => keys.includes(k)) ?? null
   const layout = [
     '7', '8', '9', 'BS',
@@ -58,7 +59,7 @@ const TenKey = ({ keys, onKey, disabled }) => {
         : (
           <button key={k} type="button" disabled={disabled} onClick={() => onKey(k)}
             aria-label={KEY_LABEL[k]?.aria ?? k}
-            className={`h-14 sm:h-16 rounded-2xl border-2 border-b-4 font-bold shadow-sm flex items-center justify-center active:border-b-2 active:translate-y-0.5 transition-all ${keyTone(k)}`}>
+            className={`${compact ? 'h-14' : 'h-14 sm:h-16'} rounded-2xl border-2 border-b-4 font-bold shadow-sm flex items-center justify-center active:border-b-2 active:translate-y-0.5 transition-all ${keyTone(k)}`}>
             {KEY_LABEL[k]?.node ?? k}
           </button>
         )))}
@@ -205,11 +206,13 @@ export const GameScreen = ({ unit, level, config, device, onExit, onFinish }) =>
         </div>
       </div>
 
-      <main className="flex-1 min-h-0 scroll-y px-4 pb-4">
+      {/* メモを 開いて いる ときは 中身の 高さに ちぢめ、のこりを メモに わたす。
+          入りきらない せまい 画面では ここが スクロールする(メモの 上では スクロールしない) */}
+      <main className={`min-h-0 scroll-y px-4 ${showMemo ? 'shrink pb-3' : 'flex-1 pb-4'}`}>
         <div className={`${WIDTH} flex flex-col lg:flex-row gap-5 lg:items-start pt-1`}>
           {/* 問題カード */}
           <div key={nudge} onClick={!isTenkey && !revealed ? reveal : undefined}
-            className={`flex-1 min-w-0 bg-card rounded-3xl shadow-md border-2 border-b-4 px-5 py-6 flex flex-col items-center text-center transition-colors ${border} ${nudge ? 'animate-nudge' : ''} ${!isTenkey && !revealed ? 'cursor-pointer' : ''}`}>
+            className={`flex-1 min-w-0 bg-card rounded-3xl shadow-md border-2 border-b-4 px-5 ${showMemo ? 'py-4' : 'py-6'} flex flex-col items-center text-center transition-colors ${border} ${nudge ? 'animate-nudge' : ''} ${!isTenkey && !revealed ? 'cursor-pointer' : ''}`}>
             {q.lead && <div className="text-base font-bold text-ink/70 mb-2">{q.lead}</div>}
             <div className={`font-bold text-ink leading-snug whitespace-nowrap max-w-full overflow-x-auto ${qSize(q.text)}`}>
               <MathText text={q.text} />
@@ -245,7 +248,7 @@ export const GameScreen = ({ unit, level, config, device, onExit, onFinish }) =>
           {/* 答える ところ */}
           <div className="w-full max-w-sm mx-auto lg:w-[300px] lg:mx-0 shrink-0">
             {isTenkey ? (
-              <TenKey keys={level.keys} onKey={handleKey} disabled={fb.status === 'correct'} />
+              <TenKey keys={level.keys} onKey={handleKey} disabled={fb.status === 'correct'} compact={showMemo} />
             ) : !revealed ? (
               <PrimaryButton className="w-full" onClick={reveal}>答えを 見る</PrimaryButton>
             ) : (

@@ -146,8 +146,11 @@ export const MemoPad = ({ resetKey, onClose }) => {
   const blank = count === 0 || last?.tool === 'clear'
 
   return (
-    <section aria-label="メモ" className="shrink-0 px-4 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] border-t-2 border-ink/10 bg-cream animate-rise-in">
-      <div className="w-full max-w-md lg:max-w-2xl mx-auto flex flex-col gap-2 h-[36dvh] min-h-[220px] max-h-[380px]">
+    // ★問題と テンキーの 下の、あいて いる 高さ ぜんぶを 使う(GameScreen の main が 中身の 高さに ちぢむ)。
+    //   はばは 問題画面(max-w-2xl)より 広く とる。書く ところで、目で 探す ところでは ない ので
+    //   patterns/layout.md の「広げすぎない」は 当てはまらない。
+    <section aria-label="メモ" className="flex-1 min-h-[320px] flex flex-col px-4 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] border-t-2 border-ink/10 bg-cream animate-rise-in">
+      <div className="w-full max-w-5xl mx-auto flex-1 min-h-0 flex flex-col gap-2">
         <div className="shrink-0 flex items-center gap-2">
           <div className="flex gap-2" role="radiogroup" aria-label="かく どうぐ">
             <ToolButton role="radio" checked={tool === 'pen'} on={tool === 'pen'} onClick={() => setTool('pen')}
