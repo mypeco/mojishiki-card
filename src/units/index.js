@@ -1,5 +1,6 @@
 // 6つの単元。① → ⑥ の順に、一次方程式までの「みち」になっている。
 import { pick } from '../lib/rand.js'
+import { mergeGrades } from '../lib/grade.js'
 import seisu from './seisu.js'
 import shosu from './shosu.js'
 import yakubai from './yakubai.js'
@@ -29,6 +30,9 @@ const mixPool = (unit) => {
   const ids = mix.pool ?? unit.levels.filter(l => !l.mix).map(l => l.id)
   return ids.map(id => getLevel(unit, id))
 }
+
+// ならう 学年(lib/grade.js)。まとめは 出題元の レベルの はばに なる
+export const levelGrade = (unit, level) => (level.mix ? mergeGrades(mixPool(unit).map(l => l.grade)) : level.grade)
 
 const genOne = (unit, level) => (level.mix ? pick(mixPool(unit)).gen() : level.gen())
 

@@ -1,5 +1,6 @@
 // 単元の 中の レベルの「みち」と、答え方(テンキー/フラッシュ)の きりかえ
-import { levelNo } from '../units/index.js'
+import { levelNo, levelGrade } from '../units/index.js'
+import { gradeLabel, gradeAria } from '../lib/grade.js'
 import { badgeKey } from '../store.js'
 import { MathText } from './MathText.jsx'
 import { Header, Path, PathStep, CardButton, WIDTH } from './ui.jsx'
@@ -11,7 +12,15 @@ const MODES = [
   ['flash', 'フラッシュ', 'めくって 答えを 見る'],
 ]
 
-export const UnitScreen = ({ unit, data, onBack, onStart, onChangeMode }) => {
+// ならう 学年の しるし。色は つけない(学年で 色わけ しない。ものさしは 1本)
+const GradeBadge = ({ grade }) => (
+  <span className="inline-flex items-center align-middle ml-2 px-2 py-0.5 rounded-full border-2 border-ink/15 bg-cream text-xs font-bold text-ink/70 leading-none whitespace-nowrap">
+    <span aria-hidden="true">{gradeLabel(grade)}</span>
+    <span className="sr-only">({gradeAria(grade)})</span>
+  </span>
+)
+
+export const UnitScreen = ({ unit, data, showGrade, onBack, onStart, onChangeMode }) => {
   const counts = {}
   for (const h of data.history) if (h.unit === unit.id) counts[h.level] = (counts[h.level] ?? 0) + 1
 
@@ -48,7 +57,10 @@ export const UnitScreen = ({ unit, data, onBack, onStart, onChangeMode }) => {
                 <PathStep key={lv.id} mark={lv.mix ? '👑' : levelNo(unit, lv.id)}>
                   <CardButton onClick={() => onStart(unit.id, lv.id)}>
                     <span className="flex-1 min-w-0">
-                      <span className="block text-lg font-bold text-ink leading-snug"><MathText text={lv.title} /></span>
+                      <span className="block text-lg font-bold text-ink leading-snug">
+                        <MathText text={lv.title} />
+                        {showGrade && <GradeBadge grade={levelGrade(unit, lv)} />}
+                      </span>
                       <span className="block text-sm font-bold text-ink/70 mt-0.5"><MathText text={lv.desc} /></span>
                     </span>
                     <span className="shrink-0 flex flex-col items-end gap-0.5 text-right">

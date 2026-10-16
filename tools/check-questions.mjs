@@ -13,10 +13,12 @@
 //   3. 答えを 打つと せいかいに なるか ── 判定(checkAnswer)を 通す。
 //   4. 小学校の レベルで 答えが マイナスに なって いないか。
 //   5. ヒントの「れい」も 同じ ように 正しいか。
+//   6. どの レベルにも ならう 学年(grade)が あるか(1〜9。[から, まで] なら から ≦ まで)。
 //
 // Windows でも 動く ように node だけで 書いて あります。
 
 import { UNITS, MIX } from '../src/units/index.js'
+import { gradeRange, MAX_GRADE } from '../src/lib/grade.js'
 import { checkAnswer, formatAnswer } from '../src/lib/answer.js'
 
 const N = Number(process.env.N ?? 300)
@@ -211,7 +213,8 @@ function verify(unit, level, q, where) {
   if (r.status !== 'correct') fail(label, `答え ${s} を 打っても ${r.status}(${r.msg})`)
 
   // 4. 小学校の レベルで マイナスの 答え
-  const elementary = ['shosu', 'yakubai', 'bunsu'].includes(unit.id) || (unit.id === 'seisu' && !level.keys.includes('−'))
+  // 小学校の レベル = ならう 学年が 小6 まで(lib/grade.js)
+  const elementary = gradeRange(level.grade)[1] <= 6
   if (elementary && ans.v && ans.v.n < 0) fail(label, 'マイナスの 答え')
   if (elementary && ans.v && ans.v.n === 0) fail(label, '答えが 0')
 }
@@ -233,6 +236,9 @@ for (const unit of UNITS) {
       continue
     }
     const where = `${unit.id}/${level.id}`
+    // 6. ならう 学年
+    const [ga, gb] = Array.isArray(level.grade) || Number.isInteger(level.grade) ? gradeRange(level.grade) : []
+    if (!(Number.isInteger(ga) && Number.isInteger(gb) && ga >= 1 && gb <= MAX_GRADE && ga <= gb)) fail(where, `ならう 学年(grade)が ない・おかしい: ${JSON.stringify(level.grade)}`)
     for (let k = 0; k < N; k++) { verify(unit, level, level.gen(), where); total++ }
     if (level.tip) verify(unit, level, level.tip.ex, `${where} ヒントの れい`)
     else if (unit.hintKind !== 'decimal') fail(where, 'ヒントが ない')

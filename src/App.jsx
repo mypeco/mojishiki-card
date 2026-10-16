@@ -129,7 +129,7 @@ export default function App() {
     )
   } else if (screen === 'UNIT' && unit) {
     body = (
-      <UnitScreen unit={unit} data={data}
+      <UnitScreen unit={unit} data={data} showGrade={device.grade}
         onBack={() => setScreen('HOME')}
         onStart={startLevel}
         onChangeMode={(m) => updateData(d => ({ ...d, modeType: m }))} />

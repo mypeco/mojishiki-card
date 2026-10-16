@@ -48,13 +48,15 @@
   -webkit-user-select: none;
   -webkit-touch-callout: none;
 }
-/* ます目(ひっ算の 位を そろえやすく する)。canvas の 下に しく ので、けしゴムで 消えない */
+/* 縦縞の ノート(ひっ算の 位を たてに そろえやすく する)。1列ずつ うすく ぬり分け、行は ごく うすい 線。
+   マスの 大きさ --memo-cell は MemoPad.jsx の CELL が 正(style で わたす)。
+   canvas の 下に しく ので、けしゴムで 消えない */
 .memo-grid {
   background-image:
-    linear-gradient(theme('colors.ink / 7%') 1px, transparent 1px),
-    linear-gradient(90deg, theme('colors.ink / 7%') 1px, transparent 1px);
-  background-size: 32px 32px;
-  background-position: -1px -1px;
+    linear-gradient(theme('colors.ink / 6%') 1px, transparent 1px),
+    linear-gradient(90deg, theme('colors.ink / 5%') 50%, transparent 50%);
+  background-size: 100% var(--memo-cell), calc(var(--memo-cell) * 2) 100%;
+  background-position: 0 -1px, 0 0;
 }
 
 /* ── うごきを 止める(patterns/semantics.md §4.6)──────────────
