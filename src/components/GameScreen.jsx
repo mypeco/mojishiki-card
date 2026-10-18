@@ -2,7 +2,7 @@
 // ★急かさない: 時間は 計るが、とちゅうで 見せない・カウントダウンも しない。
 // ★まちがえても 画面は 進まない。理由が あれば 添える(「なぜ ちがうか」)。
 //   赤い ✕ や 下がる 音は 使わない(patterns/components.md §5)。
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { generateQuestions, levelLabel, QUESTION_COUNT } from '../units/index.js'
 import { applyKey, checkAnswer, formatAnswer, inputText } from '../lib/answer.js'
 import { sound } from '../lib/sound.js'
@@ -12,6 +12,8 @@ import { DeleteIcon, LightbulbIcon, CheckIcon, FracKeyIcon, PencilIcon } from '.
 import { HintSheet } from './HintSheet.jsx'
 import { MemoPad } from './MemoPad.jsx'
 import { deviceStore, setDevice } from '../store.js'
+import { layoutHissan } from '../lib/hissan.js'
+import { gradeRange } from '../lib/grade.js'
 
 const CIRCLED = ['①', '②', '③', '④', '⑤', '⑥']
 
@@ -43,7 +45,8 @@ const keyTone = (k) => {
   return 'bg-cta-50 border-cta-300 border-b-cta-500 text-cta-800 text-3xl'
 }
 
-const TenKey = ({ keys, onKey, disabled }) => {
+// compact: メモを 開いて いる とき。キーを 低く して、メモに 高さを まわす(48px は 切らない)
+const TenKey = ({ keys, onKey, disabled, compact }) => {
   const form = FORM_KEYS.find(k => keys.includes(k)) ?? null
   const layout = [
     '7', '8', '9', 'BS',
@@ -58,7 +61,7 @@ const TenKey = ({ keys, onKey, disabled }) => {
         : (
           <button key={k} type="button" disabled={disabled} onClick={() => onKey(k)}
             aria-label={KEY_LABEL[k]?.aria ?? k}
-            className={`h-14 sm:h-16 rounded-2xl border-2 border-b-4 font-bold shadow-sm flex items-center justify-center active:border-b-2 active:translate-y-0.5 transition-all ${keyTone(k)}`}>
+            className={`${compact ? 'h-14' : 'h-14 sm:h-16'} rounded-2xl border-2 border-b-4 font-bold shadow-sm flex items-center justify-center active:border-b-2 active:translate-y-0.5 transition-all ${keyTone(k)}`}>
             {KEY_LABEL[k]?.node ?? k}
           </button>
         )))}
@@ -70,6 +73,14 @@ const TenKey = ({ keys, onKey, disabled }) => {
 const qSize = (t) => {
   const n = visualLength(t)
   if (n <= 9) return 'text-5xl'
+  if (n <= 13) return 'text-4xl'
+  if (n <= 18) return 'text-3xl'
+  return 'text-2xl'
+}
+
+// メモを「ひろい」に した ときは 問題を 1行に ちぢめる(1だん 小さく)
+const qSizeCompact = (t) => {
+  const n = visualLength(t)
   if (n <= 13) return 'text-4xl'
   if (n <= 18) return 'text-3xl'
   return 'text-2xl'
@@ -88,6 +99,8 @@ export const GameScreen = ({ unit, level, config, device, onExit, onFinish }) =>
   const [showHint, setShowHint] = useState(false)
   // メモを 開いて いるか。この 端末で さいごに えらんだ ほうを 覚えて おく
   const [showMemo, setShowMemo] = useState(() => deviceStore.d.memo === true)
+  const [memoWide, setMemoWide] = useState(() => deviceStore.d.memoWide === true) // メモの 大きさ ふつう/ひろい
+  const [hissanOn, setHissanOn] = useState(() => deviceStore.d.hissan === true) // ひっ算の 形を 下に しくか
   const missed = useRef(new Map()) // 1回目で せいかい できなかった 問題
   const startTime = useRef(Date.now())
 
@@ -95,6 +108,9 @@ export const GameScreen = ({ unit, level, config, device, onExit, onFinish }) =>
   const kind = q.ans.kind
   const isTenkey = config.modeType === 'tenkey'
   const canHint = !level.mix && (level.tip || unit.hintKind === 'decimal')
+  // ひっ算の 形は ヒントと 同じ 足場。まとめ(mix)では 出さない。小学校の レベル(ならう 学年が 小6 まで)だけ
+  const hissan = useMemo(() => (level.mix || gradeRange(level.grade)[1] > 6 ? null : layoutHissan(q.text)), [level, q.text])
+  const wide = showMemo && memoWide
   const play = (name) => { if (device.sound) sound[name]() }
 
   const advance = () => {
@@ -162,6 +178,16 @@ export const GameScreen = ({ unit, level, config, device, onExit, onFinish }) =>
     setShowMemo(!showMemo)
     setDevice({ memo: !showMemo })
   }
+  const toggleWide = () => {
+    play('tap')
+    setMemoWide(!memoWide)
+    setDevice({ memoWide: !memoWide })
+  }
+  const toggleHissan = () => {
+    play('tap')
+    setHissanOn(!hissanOn)
+    setDevice({ hissan: !hissanOn })
+  }
 
   const reveal = () => {
     if (revealed) return
@@ -181,6 +207,31 @@ export const GameScreen = ({ unit, level, config, device, onExit, onFinish }) =>
   const prefix = q.prefix ?? '='
   const answerShown = isTenkey ? inputText(kind, input) : formatAnswer(q.ans)
   const listSize = kind === 'list' ? 'text-3xl' : 'text-4xl sm:text-5xl'
+
+  // 答える ところ(テンキー/フラッシュ)。「ひろい」の ときは メモの よこに うつす
+  const answerArea = (
+    <div className={wide ? 'w-full max-w-sm mx-auto shrink-0 lg:col-start-2 lg:row-start-2 lg:max-w-none lg:self-end' : 'w-full max-w-sm mx-auto lg:w-[300px] lg:mx-0 shrink-0'}>
+      {isTenkey ? (
+        <TenKey keys={level.keys} onKey={handleKey} disabled={fb.status === 'correct'} compact={showMemo} />
+      ) : !revealed ? (
+        <PrimaryButton className="w-full" onClick={reveal}>答えを 見る</PrimaryButton>
+      ) : (
+        <div className="flex flex-col gap-3">
+          <p className="text-sm font-bold text-ink/70 text-center">じぶんの 答えと あってた？</p>
+          <div className="flex gap-3">
+            <button type="button" onClick={() => selfCheck(true)}
+              className="flex-1 min-h-[60px] rounded-2xl bg-success-50 border-2 border-success-500 border-b-4 border-b-success-700 text-ink font-bold text-lg active:border-b-2 active:translate-y-0.5 transition-all">
+              ○ あってた
+            </button>
+            <button type="button" onClick={() => selfCheck(false)}
+              className="flex-1 min-h-[60px] rounded-2xl bg-highlight-50 border-2 border-highlight-400 border-b-4 border-b-highlight-600 text-ink font-bold text-lg active:border-b-2 active:translate-y-0.5 transition-all">
+              △ ちがった
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
 
   return (
     <div className="flex flex-col h-full">
@@ -205,69 +256,60 @@ export const GameScreen = ({ unit, level, config, device, onExit, onFinish }) =>
         </div>
       </div>
 
-      <main className="flex-1 min-h-0 scroll-y px-4 pb-4">
-        <div className={`${WIDTH} flex flex-col lg:flex-row gap-5 lg:items-start pt-1`}>
-          {/* 問題カード */}
-          <div key={nudge} onClick={!isTenkey && !revealed ? reveal : undefined}
-            className={`flex-1 min-w-0 bg-card rounded-3xl shadow-md border-2 border-b-4 px-5 py-6 flex flex-col items-center text-center transition-colors ${border} ${nudge ? 'animate-nudge' : ''} ${!isTenkey && !revealed ? 'cursor-pointer' : ''}`}>
-            {q.lead && <div className="text-base font-bold text-ink/70 mb-2">{q.lead}</div>}
-            <div className={`font-bold text-ink leading-snug whitespace-nowrap max-w-full overflow-x-auto ${qSize(q.text)}`}>
-              <MathText text={q.text} />
-            </div>
-
-            <div className={`mt-4 flex items-center justify-center gap-3 font-bold leading-tight ${listSize}`}>
-              {prefix && <span className="text-ink/60 shrink-0"><MathText text={prefix} /></span>}
-              <span className={`inline-block min-w-[2.2em] px-2 pb-1 border-b-4 ${kind === 'list' ? 'whitespace-normal break-words' : 'whitespace-nowrap'}
-                ${isTenkey ? (input ? 'border-cta-300 text-ink' : 'border-ink/20 text-ink/60') : revealed ? 'border-cta-300 text-cta-700' : 'border-ink/20 text-ink/60'}`}>
-                {isTenkey
-                  ? (input ? <MathText text={answerShown} /> : '?')
-                  : (revealed ? <span className="inline-block animate-pop-in"><MathText text={answerShown} /></span> : '?')}
-              </span>
-            </div>
-
-            {/* 返し。高さを とって おき、出ても 画面が ずれない ように する */}
-            <div className="mt-4 min-h-[56px] w-full flex flex-col items-center justify-center" aria-live="polite">
-              {fb.status === 'correct' && (
-                <span className="inline-flex items-center gap-1.5 text-lg font-bold text-success-700"><CheckIcon className="w-6 h-6" /> せいかい</span>
-              )}
-              {(fb.status === 'wrong' || fb.status === 'almost' || fb.status === 'info') && (
-                <div className="rounded-2xl bg-highlight-50 border-2 border-highlight-300 px-4 py-2 text-base font-bold text-ink">
-                  <span aria-hidden="true">💭 </span>{fb.msg}
-                  {fb.lastWrong && (
-                    <span className="block text-sm text-ink/70 mt-0.5">さっきの 答え: <MathText text={inputText(kind, fb.lastWrong)} /></span>
-                  )}
-                </div>
-              )}
-              {!isTenkey && !revealed && <span className="text-sm font-bold text-ink/70">カードを 押すと 答えが 出るよ</span>}
-            </div>
-          </div>
-
-          {/* 答える ところ */}
-          <div className="w-full max-w-sm mx-auto lg:w-[300px] lg:mx-0 shrink-0">
-            {isTenkey ? (
-              <TenKey keys={level.keys} onKey={handleKey} disabled={fb.status === 'correct'} />
-            ) : !revealed ? (
-              <PrimaryButton className="w-full" onClick={reveal}>答えを 見る</PrimaryButton>
-            ) : (
-              <div className="flex flex-col gap-3">
-                <p className="text-sm font-bold text-ink/70 text-center">じぶんの 答えと あってた？</p>
-                <div className="flex gap-3">
-                  <button type="button" onClick={() => selfCheck(true)}
-                    className="flex-1 min-h-[60px] rounded-2xl bg-success-50 border-2 border-success-500 border-b-4 border-b-success-700 text-ink font-bold text-lg active:border-b-2 active:translate-y-0.5 transition-all">
-                    ○ あってた
-                  </button>
-                  <button type="button" onClick={() => selfCheck(false)}
-                    className="flex-1 min-h-[60px] rounded-2xl bg-highlight-50 border-2 border-highlight-400 border-b-4 border-b-highlight-600 text-ink font-bold text-lg active:border-b-2 active:translate-y-0.5 transition-all">
-                    △ ちがった
-                  </button>
-                </div>
+      {/* ならべ方は 3とおり。メモの 木の 位置は かえない(かえると 書いた ものが 消える)
+          ・メモ なし: 問題と テンキーで 画面を つかう
+          ・ふつう: 問題と テンキーを 中身の 高さに ちぢめ、のこりの 高さ ぜんぶを メモに わたす
+          ・ひろい: 横長(lg)では メモを 左に 高さ いっぱい、右の 列に ちぢめた 問題と テンキー。
+                   せまい 画面では 上から 問題(1行)・メモ・テンキー
+          入りきらない せまい 画面では 上(または 全体)が スクロールする。メモの 上では スクロールしない */}
+      <div className={wide ? 'flex-1 min-h-0 w-full max-w-7xl mx-auto flex flex-col gap-3 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] scroll-y lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:grid-rows-[auto_minmax(0,1fr)] lg:gap-4' : 'contents'}>
+        <main className={wide ? 'shrink-0 lg:col-start-2 lg:row-start-1' : `min-h-0 scroll-y px-4 ${showMemo ? 'shrink pb-3' : 'flex-1 pb-4'}`}>
+          <div className={wide ? 'w-full flex' : `${WIDTH} flex flex-col lg:flex-row gap-5 lg:items-start pt-1`}>
+            {/* 問題カード */}
+            <div key={nudge} onClick={!isTenkey && !revealed ? reveal : undefined}
+              className={`flex-1 min-w-0 bg-card rounded-3xl shadow-md border-2 border-b-4 text-center transition-colors ${wide ? 'px-4 py-2 flex flex-wrap items-center justify-center gap-x-5' : `px-5 ${showMemo ? 'py-4' : 'py-6'} flex flex-col items-center`} ${border} ${nudge ? 'animate-nudge' : ''} ${!isTenkey && !revealed ? 'cursor-pointer' : ''}`}>
+              {q.lead && <div className={wide ? 'w-full text-sm font-bold text-ink/70' : 'text-base font-bold text-ink/70 mb-2'}>{q.lead}</div>}
+              <div className={`font-bold text-ink leading-snug whitespace-nowrap max-w-full overflow-x-auto ${wide ? qSizeCompact(q.text) : qSize(q.text)}`}>
+                <MathText text={q.text} />
               </div>
-            )}
-          </div>
-        </div>
-      </main>
 
-      {showMemo && <MemoPad resetKey={idx} onClose={toggleMemo} />}
+              <div className={`flex items-center justify-center gap-3 font-bold leading-tight ${wide ? 'text-3xl' : `mt-4 ${listSize}`}`}>
+                {prefix && <span className="text-ink/60 shrink-0"><MathText text={prefix} /></span>}
+                <span className={`inline-block min-w-[2.2em] px-2 pb-1 border-b-4 ${kind === 'list' ? 'whitespace-normal break-words' : 'whitespace-nowrap'}
+                  ${isTenkey ? (input ? 'border-cta-300 text-ink' : 'border-ink/20 text-ink/60') : revealed ? 'border-cta-300 text-cta-700' : 'border-ink/20 text-ink/60'}`}>
+                  {isTenkey
+                    ? (input ? <MathText text={answerShown} /> : '?')
+                    : (revealed ? <span className="inline-block animate-pop-in"><MathText text={answerShown} /></span> : '?')}
+                </span>
+              </div>
+
+              {/* 返し。高さを とって おき、出ても 画面が ずれない ように する */}
+              <div className={wide ? 'mt-1 min-h-[44px] w-full flex flex-col items-center justify-center' : 'mt-4 min-h-[56px] w-full flex flex-col items-center justify-center'} aria-live="polite">
+                {fb.status === 'correct' && (
+                  <span className="inline-flex items-center gap-1.5 text-lg font-bold text-success-700"><CheckIcon className="w-6 h-6" /> せいかい</span>
+                )}
+                {(fb.status === 'wrong' || fb.status === 'almost' || fb.status === 'info') && (
+                  <div className="rounded-2xl bg-highlight-50 border-2 border-highlight-300 px-4 py-2 text-base font-bold text-ink">
+                    <span aria-hidden="true">💭 </span>{fb.msg}
+                    {fb.lastWrong && (
+                      <span className="block text-sm text-ink/70 mt-0.5">さっきの 答え: <MathText text={inputText(kind, fb.lastWrong)} /></span>
+                    )}
+                  </div>
+                )}
+                {!isTenkey && !revealed && <span className="text-sm font-bold text-ink/70">カードを 押すと 答えが 出るよ</span>}
+              </div>
+            </div>
+            {!wide && answerArea}
+          </div>
+        </main>
+        <div className="contents">
+          {showMemo && (
+            <MemoPad resetKey={idx} onClose={toggleMemo} wide={wide} onToggleWide={toggleWide}
+              hissan={hissan} hissanOn={hissanOn} onToggleHissan={toggleHissan} />
+          )}
+          {wide && answerArea}
+        </div>
+      </div>
 
       {showHint && <HintSheet unit={unit} level={level} item={q} onClose={() => setShowHint(false)} />}
     </div>
